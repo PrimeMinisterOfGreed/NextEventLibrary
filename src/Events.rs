@@ -17,8 +17,8 @@ pub enum DefaultType {
     NOEVENT,
 }
 
-impl DefaultType{
-    pub fn to_char(&self)->char{
+impl DefaultType {
+    pub fn to_char(&self) -> char {
         match self {
             DefaultType::ARRIVAL => 'A',
             DefaultType::DEPARTURE => 'D',
@@ -37,13 +37,13 @@ impl PartialEq<char> for DefaultType {
     }
 }
 
-impl PartialEq<DefaultType> for char{
+impl PartialEq<DefaultType> for char {
     fn eq(&self, other: &DefaultType) -> bool {
         *self == other.to_char()
     }
 }
 
-impl Into<char> for DefaultType{
+impl Into<char> for DefaultType {
     fn into(self) -> char {
         self.to_char()
     }
@@ -52,18 +52,17 @@ impl Into<char> for DefaultType{
 impl From<char> for DefaultType {
     fn from(value: char) -> Self {
         match value {
-            'A' => DefaultType::ARRIVAL  ,
-            'D' => DefaultType::DEPARTURE  ,
-            'I' => DefaultType::INPROCESS  ,
-            'E' => DefaultType::END  ,
-            'P' => DefaultType::PROBE  ,
-            'M' => DefaultType::MAINTENANCE  ,
-            'N' => DefaultType::NOEVENT  ,
-            _ => DefaultType::NOEVENT
+            'A' => DefaultType::ARRIVAL,
+            'D' => DefaultType::DEPARTURE,
+            'I' => DefaultType::INPROCESS,
+            'E' => DefaultType::END,
+            'P' => DefaultType::PROBE,
+            'M' => DefaultType::MAINTENANCE,
+            'N' => DefaultType::NOEVENT,
+            _ => DefaultType::NOEVENT,
         }
     }
 }
-
 
 #[derive(Clone, PartialEq)]
 pub struct Event {
@@ -76,8 +75,6 @@ pub struct Event {
     pub destination: String,
 }
 
-
-
 impl Event {
     pub fn new(
         kind: char,
@@ -85,7 +82,7 @@ impl Event {
         occurTime: f64,
         serviceTime: f64,
         arrivalTime: f64,
-        destination: String
+        destination: String,
     ) -> Self {
         Event {
             kind,
@@ -101,7 +98,7 @@ impl Event {
     pub fn gen_arrival(clock: f64) -> Self {
         Event {
             kind: DefaultType::ARRIVAL.to_char(),
-            createTime: clock ,
+            createTime: clock,
             occurTime: clock + Exponential(3.0),
             serviceTime: Exponential(5.0),
             arrivalTime: clock + Exponential(1.0),
@@ -109,15 +106,15 @@ impl Event {
             destination: "None".to_string(),
         }
     }
-    pub fn gen_departure(clock: f64) -> Self{
-        Event{
+    pub fn gen_departure(clock: f64) -> Self {
+        Event {
             kind: DefaultType::DEPARTURE.to_char(),
             createTime: clock,
             occurTime: clock + Exponential(3.0),
             serviceTime: 0.0,
             arrivalTime: clock - Exponential(3.0),
             subType: DefaultType::NOEVENT.to_char(),
-            destination: "None".to_string()
+            destination: "None".to_string(),
         }
     }
 }
@@ -133,7 +130,6 @@ impl fmt::Display for DefaultType {
             DefaultType::MAINTENANCE => result = "Maintenance",
             DefaultType::NOEVENT => result = "NoEvent",
             DefaultType::INPROCESS => result = "InProcess",
-
         }
         f.write_str(result)
     }

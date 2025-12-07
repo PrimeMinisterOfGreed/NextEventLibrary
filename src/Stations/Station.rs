@@ -1,73 +1,54 @@
+use std::{cell::RefCell, sync::Arc};
 
 use log::error;
 use plotters::prelude::DynElement;
 
 use crate::Events::{DefaultType, Event};
 
-use super::{
-    StationData::StationData,
-};
+use super::StationData::StationData;
 
+pub enum ComputeResult {
+    Ok,
+    Event(Event),
+    Error(String),
+}
 
 pub trait IEventManager {
-    fn process_event(
-        &mut self,
-        event: &Event,
-        data: &mut StationData,
-    );
+    fn process_event(&mut self, event: &Event, data: &mut StationData) -> ComputeResult;
 }
 
+pub trait IStation {
+    fn handle(&mut self, event: &Event) -> ComputeResult;
+    fn get_data(&self) -> &StationData;
+    fn name(&self) -> &String;
+}
 
-type Handler = Option<Box<dyn IEventManager>>;
-
-pub struct Station {
+pub struct Station<T: IEventManager> {
     name: String,
     data: StationData,
-    event_handler: Handler,
-    arrival_handler: Handler,
-    departure_handler: Handler
+    policy: T,
 }
 
-impl Station {
-    pub fn new(name: &str) -> Self {
-        let mut s = Station {
+impl<T: IEventManager> Station<T> {
+    pub fn new(name: &str, policy: T) -> Self {
+        Station {
             name: name.to_string(),
             data: StationData::new(),
-            event_handler: None,
-            arrival_handler: None,
-            departure_handler: None,
-        };
-        s
-    }
-
-    pub fn set_handler(&mut self, handler: Box<dyn IEventManager>) {
-        if let None = self.event_handler {
-            self.event_handler = Some(handler);
-        } else {
-            error!("Cannot set handler 2 times")
+            policy,
         }
     }
+}
 
-    pub fn handle(&mut self, event: &Event) {
-        if let Some(handler) = &mut self.event_handler {
-            self.data.update(event.occurTime);
-            if event.kind == DefaultType::ARRIVAL && self.arrival_handler.is_some(){
-                self.arrival_handler.as_mut().unwrap().process_event(event, &mut self.data);
-            }
-            else if event.kind == DefaultType::DEPARTURE && self.departure_handler.is_some(){
-                self.departure_handler.as_mut().unwrap().process_event(event, &mut self.data);
-            }
-            handler.process_event(event, &mut self.data);
-        } else {
-            error!("handler not set");
-        }
+impl<T: IEventManager> IStation for Station<T> {
+    fn handle(&mut self, event: &Event) -> ComputeResult {
+        self.policy.process_event(event, &mut self.data)
     }
 
-    pub fn get_data(&self) -> &StationData {
+    fn get_data(&self) -> &StationData {
         &self.data
     }
 
-    pub fn name(&self) -> &String {
+    fn name(&self) -> &String {
         &self.name
     }
 }
@@ -76,20 +57,40 @@ impl Station {
 mod tests {
     use std::any::TypeId;
 
-    use crate::Stations::FCFSRuler::FCFSPolicyManager;
+    use once_cell::sync::Lazy;
+
+    use crate::{Engines::Engine, Stations::FCFSRuler::FCFSPolicyManager};
 
     use super::*;
+    struct MockStation {}
+    impl IStation for MockStation {
+        fn handle(&mut self, _event: &Event) -> ComputeResult {
+            ComputeResult::Event(_event.clone())
+        }
+        fn get_data(&self) -> &StationData {
+            static DATA: Lazy<StationData> = Lazy::new(|| StationData::new());
+            &DATA
+        }
+        fn name(&self) -> &String {
+            static NAME: Lazy<String> = Lazy::new(|| "mock".to_string());
+            &NAME
+        }
+    }
 
     #[test]
-    fn test_name_equality(){
+    fn test_name_equality() {}
 
-    }
-    
     #[test]
     fn test_forwarder() {
-        let mut station = Station::new("mock");
-       
-        station.handle(&Event::gen_arrival(10.0));
-        println!("{:?}", station.get_data())
+        let mut engine = Engine::new();
+        let mut station = MockStation {};
+        engine.register_station(&mut station);
+        let mut event = Event::gen_arrival(0.1);
+        event.destination = "mock".to_string();
+        engine.enqueue(event.clone());
+        engine.tick();
+        println!("{:?}", engine.stations()[0].get_data());
+        assert!(!engine.events().is_empty());
+        assert!(*engine.events().front().unwrap() == event);
     }
 }
